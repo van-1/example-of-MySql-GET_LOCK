@@ -1,0 +1,46 @@
+CREATE DEFINER=`xxx`@`localhost` PROCEDURE `get_ips_for_vds`(IN `dc` INT, IN `count_ips` INT)
+    MODIFIES SQL DATA
+begin
+
+DECLARE curr_ip varchar(15);
+DECLARE main_ip varchar(15);
+
+DECLARE ip_iter INT;
+DECLARE pos_num INT;
+DECLARE lock_result INT;
+
+set lock_result = (SELECT GET_LOCK('IPS_LOCK',30));
+
+	drop temporary table if exists tmp;
+	#Set count_ips = count_ips -1;
+	create temporary table tmp engine=memory select ip from ip where status=0 and vlan=XXXX and dc_id=dc and ip not like 'XXX.XXX.%' order by ip_id asc limit 1;
+	
+    Set main_ip = (select * from tmp);
+    UPDATE ip SET status=999 WHERE ip=main_ip;
+    
+    set count_ips = count_ips - 1;
+	set ip_iter = 0;
+	set pos_num = ip_iter+1;
+	start_loop: loop
+		if ip_iter = count_ips then 
+    		leave start_loop;
+    	else
+        
+        	#select ip_iter;
+        	#select pos_num;
+        	Set curr_ip = (select ip from ip where status=0 and vlan=-1 and dc_id=dc and ip not like 'XXX.XXX.%' order by ip_id asc limit 1);
+        	#select curr_ip;
+        	UPDATE ip SET status=999 WHERE ip=curr_ip;
+            INSERT INTO tmp (ip) VALUES(curr_ip);
+		end if;
+    	set ip_iter = ip_iter + 1;
+    	set pos_num = ip_iter+1;
+	end loop;
+
+	select * from tmp;
+	drop temporary table if exists tmp;
+
+
+SET lock_result = (SELECT RELEASE_LOCK('IPS_LOCK'));
+
+end$$
